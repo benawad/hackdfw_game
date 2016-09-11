@@ -58,8 +58,6 @@ func main() {
 		panic(dbErr)
 	}
 
-	defer db.Close()
-
 	router.HandleFunc("/", indexHandler)
 	router.HandleFunc("/dashboard", authenticate(dashboardHandler))
 	router.HandleFunc("/profile", authenticate(profileHandler))
@@ -148,6 +146,11 @@ func loginHandler(res http.ResponseWriter, req *http.Request) {
 }
 
 func register(username string, password string) bool {
+	_, err := db.Query("select password from users where username='" + username + "'")
+	if err == nil {
+		log.Println(username + " already registered")
+		return false
+	}
 	username = strings.TrimSpace(username)
 	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
 	if err != nil {
@@ -205,5 +208,5 @@ func clearSession(res http.ResponseWriter) {
 
 func logoutHandler(res http.ResponseWriter, req *http.Request) {
 	clearSession(res)
-	http.Redirect(res, req, "/", 302)
+	http.Redirect(res, req, "/login", 302)
 }
