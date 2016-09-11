@@ -1,10 +1,15 @@
 package main
 
 import (
+	"database/sql"
 	"github.com/gorilla/mux"
 	"github.com/gorilla/securecookie"
+	_ "github.com/mattn/go-sqlite3"
+	"golang.org/x/crypto/bcrypt"
 	"html/template"
+	"log"
 	"net/http"
+	"strings"
 )
 
 var cookieHandler = securecookie.New(
@@ -12,7 +17,7 @@ var cookieHandler = securecookie.New(
 	securecookie.GenerateRandomKey(32),
 )
 
-var templates = template.Must(template.ParseFiles("templates/loginForm.html", "templates/dashboard.html", "templates/profile.html"))
+var templates = template.Must(template.ParseFiles("templates/login.html", "templates/dashboard.html", "templates/profile.html", "templates/register.html"))
 
 func renderTemplate(res http.ResponseWriter, template string, obj interface{}) {
 	err := templates.ExecuteTemplate(res, template+".html", obj)
@@ -22,6 +27,8 @@ func renderTemplate(res http.ResponseWriter, template string, obj interface{}) {
 }
 
 var router = mux.NewRouter()
+
+var db, dbErr = sql.Open("sqlite3", "users.sqlite3")
 
 func getUsername(req *http.Request) (username string) {
 	if cookie, err := req.Cookie("session"); err == nil {
@@ -45,18 +52,26 @@ func authenticate(fn func(http.ResponseWriter, *http.Request, string)) http.Hand
 }
 
 func main() {
+
+	if dbErr != nil {
+		panic(dbErr)
+	}
+
+	defer db.Close()
+
 	router.HandleFunc("/", indexHandler)
 	router.HandleFunc("/dashboard", authenticate(dashboardHandler))
 	router.HandleFunc("/profile", authenticate(profileHandler))
-	router.HandleFunc("/login", loginHandler).Methods("POST")
+	router.HandleFunc("/login", loginHandler).Methods("GET", "POST")
 	router.HandleFunc("/logout", logoutHandler).Methods("POST")
+	router.HandleFunc("/register", registerHandler).Methods("GET", "POST")
 
 	http.Handle("/", router)
 	http.ListenAndServe(":8000", nil)
 }
 
 func indexHandler(res http.ResponseWriter, req *http.Request) {
-	renderTemplate(res, "loginForm", nil)
+	http.Redirect(res, req, "/login", 302)
 }
 
 func dashboardHandler(res http.ResponseWriter, req *http.Request, username string) {
@@ -87,20 +102,89 @@ func setSession(username string, res http.ResponseWriter) {
 	}
 }
 
-func loginHandler(res http.ResponseWriter, req *http.Request) {
-	name := req.FormValue("name")
-	password := req.FormValue("password")
-	redirectTarget := "/"
-	if name != "" && password != "" {
+func verify(username string, password string) bool {
+	username = strings.TrimSpace(username)
+	rows, err := db.Query("select password from users where username='" + username + "'")
+	if err != nil {
+		log.Fatal(err)
+		return false
+	}
+	defer rows.Close()
+	rows.Next()
+	var hashedPassword string
+	err = rows.Scan(&hashedPassword)
+	if err != nil {
+		log.Fatal(err)
+		return false
+	}
+	err = bcrypt.CompareHashAndPassword([]byte(hashedPassword), []byte(password))
+	return err == nil
+}
 
-		if name == "bob" && password == "password" {
-			setSession(name, res)
-			redirectTarget = "/dashboard"
+func loginHandler(res http.ResponseWriter, req *http.Request) {
+	if req.Method == "GET" {
+		renderTemplate(res, "login", nil)
+	} else {
+		name := req.FormValue("name")
+		password := req.FormValue("password")
+		redirectTarget := "/"
+		if name != "" && password != "" {
+
+			if verify(name, password) {
+				setSession(name, res)
+				redirectTarget = "/dashboard"
+			}
+
 		}
 
+		http.Redirect(res, req, redirectTarget, 302)
+	}
+}
+
+func register(username string, password string) bool {
+	username = strings.TrimSpace(username)
+	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
+	if err != nil {
+		log.Fatal(err)
+		return false
 	}
 
-	http.Redirect(res, req, redirectTarget, 302)
+	// insert into db
+	tx, err := db.Begin()
+	if err != nil {
+		log.Fatal(err)
+		return false
+	}
+	stmt, err := tx.Prepare("insert into users(username, password) values(?, ?)")
+	if err != nil {
+		log.Fatal(err)
+		return false
+	}
+	defer stmt.Close()
+	_, err = stmt.Exec(username, hashedPassword)
+	if err != nil {
+		log.Fatal(err)
+		return false
+	}
+	tx.Commit()
+	return true
+}
+
+func registerHandler(res http.ResponseWriter, req *http.Request) {
+	if req.Method == "GET" {
+		renderTemplate(res, "register", nil)
+	} else {
+		name := req.FormValue("name")
+		password := req.FormValue("password")
+		redirectTarget := "/register"
+		if name != "" && password != "" {
+			if register(name, password) {
+				setSession(name, res)
+				redirectTarget = "/dashboard"
+			}
+		}
+		http.Redirect(res, req, redirectTarget, 302)
+	}
 }
 
 func clearSession(res http.ResponseWriter) {

@@ -19,6 +19,24 @@
 			"path": "github.com/gorilla/securecookie",
 			"revision": "c13558c2b1c44da35e0eb043053609a5ba3a1f19",
 			"revisionTime": "2016-08-16T22:23:38Z"
+		},
+		{
+			"checksumSHA1": "ToGxRLachRwa1HbVy7ZBdJaq5Zc=",
+			"path": "github.com/mattn/go-sqlite3",
+			"revision": "3fb7a0e792edd47bf0cf1e919dfc14e2be412e15",
+			"revisionTime": "2016-09-07T16:20:43Z"
+		},
+		{
+			"checksumSHA1": "vE43s37+4CJ2CDU6TlOUOYE0K9c=",
+			"path": "golang.org/x/crypto/bcrypt",
+			"revision": "aa2481cbfe81d911eb62b642b7a6b5ec58bbea71",
+			"revisionTime": "2016-09-10T02:06:31Z"
+		},
+		{
+			"checksumSHA1": "JsJdKXhz87gWenMwBeejTOeNE7k=",
+			"path": "golang.org/x/crypto/blowfish",
+			"revision": "aa2481cbfe81d911eb62b642b7a6b5ec58bbea71",
+			"revisionTime": "2016-09-10T02:06:31Z"
 		}
 	],
 	"rootPath": "myprograms/hackdfw_game"
