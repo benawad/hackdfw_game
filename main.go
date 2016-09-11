@@ -77,7 +77,7 @@ func main() {
 }
 
 func indexHandler(res http.ResponseWriter, req *http.Request) {
-	http.Redirect(res, req, "/login", 302)
+	http.Redirect(res, req, "/register", 302)
 }
 
 func dashboardHandler(res http.ResponseWriter, req *http.Request, username string) {
