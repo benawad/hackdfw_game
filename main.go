@@ -146,8 +146,8 @@ func loginHandler(res http.ResponseWriter, req *http.Request) {
 }
 
 func register(username string, password string) bool {
-	_, err := db.Query("select password from users where username='" + username + "'")
-	if err == nil {
+	rows, _ := db.Query("select password from users where username='" + username + "'")
+	for rows.Next() {
 		log.Println(username + " already registered")
 		return false
 	}
