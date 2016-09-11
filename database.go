@@ -6,7 +6,7 @@ import (
 	"os"
 )
 
-func main() {
+func createDatabase() {
 	dbName := "users.sqlite3"
 	os.Remove(dbName)
 	db, err := sql.Open("sqlite3", dbName)
