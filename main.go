@@ -14,8 +14,8 @@ var cookieHandler = securecookie.New(
 
 var templates = template.Must(template.ParseFiles("templates/loginForm.html", "templates/dashboard.html"))
 
-func renderTemplate(res http.ResponseWriter, template string) {
-	err := templates.ExecuteTemplate(res, template+".html", nil)
+func renderTemplate(res http.ResponseWriter, template string, obj interface{}) {
+	err := templates.ExecuteTemplate(res, template+".html", obj)
 	if err != nil {
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 	}
@@ -34,7 +34,7 @@ func main() {
 }
 
 func indexHandler(res http.ResponseWriter, req *http.Request) {
-	renderTemplate(res, "loginForm")
+	renderTemplate(res, "loginForm", nil)
 }
 
 func getUsername(req *http.Request) (username string) {
@@ -50,7 +50,10 @@ func getUsername(req *http.Request) (username string) {
 func dashboardHandler(res http.ResponseWriter, req *http.Request) {
 	username := getUsername(req)
 	if username != "" {
-		renderTemplate(res, "dashboard")
+		user := map[string]string{
+			"username": username,
+		}
+		renderTemplate(res, "dashboard", user)
 	} else {
 		http.Redirect(res, req, "/", 302)
 	}
