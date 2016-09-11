@@ -12,7 +12,7 @@ var cookieHandler = securecookie.New(
 	securecookie.GenerateRandomKey(32),
 )
 
-var templates = template.Must(template.ParseFiles("templates/loginForm.html", "templates/dashboard.html"))
+var templates = template.Must(template.ParseFiles("templates/loginForm.html", "templates/dashboard.html", "templates/profile.html"))
 
 func renderTemplate(res http.ResponseWriter, template string, obj interface{}) {
 	err := templates.ExecuteTemplate(res, template+".html", obj)
@@ -22,20 +22,6 @@ func renderTemplate(res http.ResponseWriter, template string, obj interface{}) {
 }
 
 var router = mux.NewRouter()
-
-func main() {
-	router.HandleFunc("/", indexHandler)
-	router.HandleFunc("/dashboard", dashboardHandler)
-	router.HandleFunc("/login", loginHandler).Methods("POST")
-	router.HandleFunc("/logout", logoutHandler).Methods("POST")
-
-	http.Handle("/", router)
-	http.ListenAndServe(":8000", nil)
-}
-
-func indexHandler(res http.ResponseWriter, req *http.Request) {
-	renderTemplate(res, "loginForm", nil)
-}
 
 func getUsername(req *http.Request) (username string) {
 	if cookie, err := req.Cookie("session"); err == nil {
@@ -47,16 +33,44 @@ func getUsername(req *http.Request) (username string) {
 	return username
 }
 
-func dashboardHandler(res http.ResponseWriter, req *http.Request) {
-	username := getUsername(req)
-	if username != "" {
-		user := map[string]string{
-			"username": username,
+func authenticate(fn func(http.ResponseWriter, *http.Request, string)) http.HandlerFunc {
+	return func(res http.ResponseWriter, req *http.Request) {
+		username := getUsername(req)
+		if username != "" {
+			fn(res, req, username)
+		} else {
+			http.Redirect(res, req, "/", 302)
 		}
-		renderTemplate(res, "dashboard", user)
-	} else {
-		http.Redirect(res, req, "/", 302)
 	}
+}
+
+func main() {
+	router.HandleFunc("/", indexHandler)
+	router.HandleFunc("/dashboard", authenticate(dashboardHandler))
+	router.HandleFunc("/profile", authenticate(profileHandler))
+	router.HandleFunc("/login", loginHandler).Methods("POST")
+	router.HandleFunc("/logout", logoutHandler).Methods("POST")
+
+	http.Handle("/", router)
+	http.ListenAndServe(":8000", nil)
+}
+
+func indexHandler(res http.ResponseWriter, req *http.Request) {
+	renderTemplate(res, "loginForm", nil)
+}
+
+func dashboardHandler(res http.ResponseWriter, req *http.Request, username string) {
+	user := map[string]string{
+		"username": username,
+	}
+	renderTemplate(res, "dashboard", user)
+}
+
+func profileHandler(res http.ResponseWriter, req *http.Request, username string) {
+	user := map[string]string{
+		"username": username,
+	}
+	renderTemplate(res, "profile", user)
 }
 
 func setSession(username string, res http.ResponseWriter) {
