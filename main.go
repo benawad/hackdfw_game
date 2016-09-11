@@ -9,6 +9,7 @@ import (
 	"html/template"
 	"log"
 	"net/http"
+	"os"
 	"strings"
 )
 
@@ -66,8 +67,13 @@ func main() {
 	router.HandleFunc("/logout", logoutHandler).Methods("POST")
 	router.HandleFunc("/register", registerHandler).Methods("GET", "POST")
 
+	port := os.Getenv("PORT")
+	if port == "" {
+		port = "8000"
+	}
+
 	http.Handle("/", router)
-	http.ListenAndServe(":8000", nil)
+	http.ListenAndServe(":"+port, nil)
 }
 
 func indexHandler(res http.ResponseWriter, req *http.Request) {
